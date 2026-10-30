@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>스마트 금융 계산기 | 주식 물타기 · 복리 적금 · 배당금 계산기</title>
+  <meta name="description" content="주식 물타기 평단가 계산, 목표 수익률 역산, 예적금 만기 이자 및 세후 실수령액, 배당소득세 계산을 한곳에서 제공합니다.">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --success: #16a34a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+    body { background-color: var(--bg); color: var(--text); line-height: 1.6; padding: 20px 12px; }
+    .container { max-width: 640px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 24px; }
+    header h1 { font-size: 1.5rem; font-weight: 800; color: #0f172a; }
+    header p { font-size: 0.9rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
+    .tab-btn { flex: 1; min-width: 100px; padding: 10px 12px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 8px; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: 0.2s; white-space: nowrap; color: var(--text-muted); }
+    .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* Card */
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: #334155; }
+    .form-group input, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; outline: none; }
+    .form-group input:focus, .form-group select:focus { border-color: var(--primary); ring: 2px solid #bfdbfe; }
+    .btn-calc { width: 100%; padding: 12px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; margin-top: 8px; }
+    .btn-calc:hover { background: #1d4ed8; }
+
+    /* Result Box */
+    .result-box { display: none; margin-top: 20px; padding: 16px; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 8px; }
+    .result-title { font-size: 0.9rem; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .result-item { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.9rem; }
+    .result-item.highlight { font-size: 1.05rem; font-weight: 800; color: #1e3a8a; border-top: 1px dashed #bfdbfe; padding-top: 8px; margin-top: 8px; }
+
+    /* SEO / Content Section */
+    .article { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; font-size: 0.88rem; color: #475569; }
+    .article h2 { font-size: 1.05rem; font-weight: 700; color: #0f172a; margin-top: 16px; margin-bottom: 6px; }
+    .article h2:first-child { margin-top: 0; }
+    .article p { margin-bottom: 10px; }
+    .ad-placeholder { width: 100%; height: 90px; background: #e2e8f0; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: #94a3b8; border-radius: 8px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>스마트 금융 계산기</h1>
+    <p>주식 평단가, 예적금 이자, 배당 수익을 빠르게 계산하세요</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('stock')">주식 물타기</button>
+    <button class="tab-btn" onclick="switchTab('deposit')">예적금 이자</button>
+    <button class="tab-btn" onclick="switchTab('dividend')">배당금/소득세</button>
+  </div>
+
+  <!-- 1. 주식 물타기 계산기 -->
+  <div id="tab-stock" class="card">
+    <div class="form-group">
+      <label>기존 보유 평단가 (원)</label>
+      <input type="number" id="current-price" placeholder="예: 70000">
+    </div>
+    <div class="form-group">
+      <label>기존 보유 수량 (주)</label>
+      <input type="number" id="current-qty" placeholder="예: 10">
+    </div>
+    <div class="form-group">
+      <label>추가 매수 희망가 (원)</label>
+      <input type="number" id="buy-price" placeholder="예: 55000">
+    </div>
+    <div class="form-group">
+      <label>추가 매수 수량 (주)</label>
+      <input type="number" id="buy-qty" placeholder="예: 10">
+    </div>
+    <button class="btn-calc" onclick="calcStock()">최종 평단가 계산하기</button>
+
+    <div id="stock-result" class="result-box">
+      <div class="result-title">계산 결과</div>
+      <div class="result-item"><span>총 보유 주수</span><span id="res-total-qty">0주</span></div>
+      <div class="result-item"><span>총 매수 금액</span><span id="res-total-amount">0원</span></div>
+      <div class="result-item highlight"><span>새로운 평단가</span><span id="res-new-avg">0원</span></div>
+    </div>
+  </div>
+
+  <!-- 2. 예적금 계산기 -->
+  <div id="tab-deposit" class="card" style="display:none;">
+    <div class="form-group">
+      <label>상품 유형</label>
+      <select id="dep-type">
+        <option value="saving">정기적금 (매월 일정액 납입)</option>
+        <option value="deposit">정기예금 (목돈 일시 예치)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>납입 금액 (원)</label>
+      <input type="number" id="dep-amount" placeholder="예: 500000">
+    </div>
+    <div class="form-group">
+      <label>연 이자율 (%)</label>
+      <input type="number" step="0.1" id="dep-rate" placeholder="예: 4.5">
+    </div>
+    <div class="form-group">
+      <label>가입 기간 (개월)</label>
+      <input type="number" id="dep-months" placeholder="예: 12">
+    </div>
+    <div class="form-group">
+      <label>과세 구분</label>
+      <select id="dep-tax">
+        <option value="15.4">일반과세 (15.4%)</option>
+        <option value="9.5">세금우대 (9.5%)</option>
+        <option value="0">비과세 (0%)</option>
+      </select>
+    </div>
+    <button class="btn-calc" onclick="calcDeposit()">만기 수령액 계산하기</button>
+
+    <div id="dep-result" class="result-box">
+      <div class="result-title">예상 만기 수령액</div>
+      <div class="result-item"><span>원금 합계</span><span id="res-dep-principal">0원</span></div>
+      <div class="result-item"><span>세전 이자</span><span id="res-dep-pretax">0원</span></div>
+      <div class="result-item"><span>이자 과세</span><span id="res-dep-tax">0원</span></div>
+      <div class="result-item highlight"><span>세후 최종 실수령액</span><span id="res-dep-final">0원</span></div>
+    </div>
+  </div>
+
+  <!-- 3. 배당금 계산기 -->
+  <div id="tab-dividend" class="card" style="display:none;">
+    <div class="form-group">
+      <label>보유 주식 수 (주)</label>
+      <input type="number" id="div-shares" placeholder="예: 100">
+    </div>
+    <div class="form-group">
+      <label>1주당 배당금 (연간 기준 / 원)</label>
+      <input type="number" id="div-per-share" placeholder="예: 2500">
+    </div>
+    <button class="btn-calc" onclick="calcDividend()">배당 소득 계산하기</button>
+
+    <div id="div-result" class="result-box">
+      <div class="result-title">배당금 계산 결과</div>
+      <div class="result-item"><span>세전 배당 총액</span><span id="res-div-total">0원</span></div>
+      <div class="result-item"><span>일반 계좌 세금 (15.4%)</span><span id="res-div-tax">0원</span></div>
+      <div class="result-item highlight"><span>일반 계좌 실수령액</span><span id="res-div-net">0원</span></div>
+      <div class="result-item" style="color:var(--success); font-weight:600; margin-top:8px;">
+        <span>ISA 비과세 적용 시 절세액</span><span id="res-div-isa-benefit">0원</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 광고 및 배너 위치 (구글 애드센스 승인 전 더미) -->
+  <div class="ad-placeholder">광고 영역 (Google AdSense 배치 예정)</div>
+
+  <!-- 검색엔진 최적화(SEO) 및 애드센스 승인용 해설 콘텐츠 -->
+  <div class="article">
+    <h2>주식 물타기(추가 매수) 계산 원리</h2>
+    <p>물타기란 보유한 주식의 주가가 하락했을 때 추가 매수를 통해 1주당 매수 평균 단가(평단가)를 낮추는 전략입니다. 계산 공식은 <code>(기존 총 매수금액 + 추가 매수금액) / (기존 수량 + 추가 수량)</code>으로 산출됩니다.</p>
+
+    <h2>이자 과세(15.4%)와 ISA 계좌의 차이</h2>
+    <p>일반 은행 및 증권 계좌에서 발생하는 예적금 이자 및 주식 배당금에는 이자·배당소득세 14%와 지방소득세 1.4%가 합쳐진 총 15.4%의 세금이 원천징수됩니다. 반면 중개형 ISA(개인종합자산관리계좌) 등을 활용하면 일정 한도(일반형 200만 원, 서민형 400만 원)까지 비과세 혜택을 받을 수 있어 실질 수익률을 극대화할 수 있습니다.</p>
+  </div>
+</div>
+
+<script>
+  function switchTab(type) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-stock').style.display = 'none';
+    document.getElementById('tab-deposit').style.display = 'none';
+    document.getElementById('tab-dividend').style.display = 'none';
+
+    if (type === 'stock') {
+      document.getElementById('tab-stock').style.display = 'block';
+      event.target.classList.add('active');
+    } else if (type === 'deposit') {
+      document.getElementById('tab-deposit').style.display = 'block';
+      event.target.classList.add('active');
+    } else if (type === 'dividend') {
+      document.getElementById('tab-dividend').style.display = 'block';
+      event.target.classList.add('active');
+    }
+  }
+
+  function formatKRW(val) {
+    return Math.round(val).toLocaleString('ko-KR') + '원';
+  }
+
+  function calcStock() {
+    const cp = parseFloat(document.getElementById('current-price').value) || 0;
+    const cq = parseFloat(document.getElementById('current-qty').value) || 0;
+    const bp = parseFloat(document.getElementById('buy-price').value) || 0;
+    const bq = parseFloat(document.getElementById('buy-qty').value) || 0;
+
+    const totalQty = cq + bq;
+    if (totalQty === 0) return;
+
+    const totalAmount = (cp * cq) + (bp * bq);
+    const newAvg = totalAmount / totalQty;
+
+    document.getElementById('res-total-qty').innerText = totalQty.toLocaleString('ko-KR') + '주';
+    document.getElementById('res-total-amount').innerText = formatKRW(totalAmount);
+    document.getElementById('res-new-avg').innerText = formatKRW(newAvg);
+    document.getElementById('stock-result').style.display = 'block';
+  }
+
+  function calcDeposit() {
+    const type = document.getElementById('dep-type').value;
+    const amount = parseFloat(document.getElementById('dep-amount').value) || 0;
+    const rate = (parseFloat(document.getElementById('dep-rate').value) || 0) / 100;
+    const months = parseInt(document.getElementById('dep-months').value) || 0;
+    const taxRate = parseFloat(document.getElementById('dep-tax').value) / 100;
+
+    let principal = 0;
+    let pretaxInterest = 0;
+
+    if (type === 'deposit') {
+      principal = amount;
+      pretaxInterest = principal * rate * (months / 12);
+    } else {
+      principal = amount * months;
+      pretaxInterest = amount * (months * (months + 1) / 2) * (rate / 12);
+    }
+
+    const tax = pretaxInterest * taxRate;
+    const finalAmount = principal + pretaxInterest - tax;
+
+    document.getElementById('res-dep-principal').innerText = formatKRW(principal);
+    document.getElementById('res-dep-pretax').innerText = formatKRW(pretaxInterest);
+    document.getElementById('res-dep-tax').innerText = formatKRW(tax);
+    document.getElementById('res-dep-final').innerText = formatKRW(finalAmount);
+    document.getElementById('dep-result').style.display = 'block';
+  }
+
+  function calcDividend() {
+    const shares = parseFloat(document.getElementById('div-shares').value) || 0;
+    const perShare = parseFloat(document.getElementById('div-per-share').value) || 0;
+
+    const totalDiv = shares * perShare;
+    const tax = totalDiv * 0.154;
+    const netDiv = totalDiv - tax;
+
+    document.getElementById('res-div-total').innerText = formatKRW(totalDiv);
+    document.getElementById('res-div-tax').innerText = formatKRW(tax);
+    document.getElementById('res-div-net').innerText = formatKRW(netDiv);
+    document.getElementById('res-div-isa-benefit').innerText = '+' + formatKRW(tax) + ' 절약';
+    document.getElementById('div-result').style.display = 'block';
+  }
+</script>
+</body>
+</html>
